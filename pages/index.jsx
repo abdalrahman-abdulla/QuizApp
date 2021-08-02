@@ -17,50 +17,54 @@ export default function Home() {
     Req().then((e) => setQuestions(e));
   }, []);
   useEffect(() => {
-    setScore(select == ans ? score + 1 : score);
-  }, [ans]);
-
-  useEffect(() => {
     setTimeout(() => {
       done || !email ? "" : setSeconds(seconds + 1);
     }, 1000);
   }, [seconds, email]);
 
+  useEffect(() => {
+    done && sendMail();
+  }, [done]);
+
+  const sendMail = () => {
+    let toSend = {
+      from_name: "QA Team",
+      to_name: "Dear",
+      message: `your score in Exam is ${
+        score +
+        " / " +
+        questions.length +
+        ". time you take is " +
+        new Date(seconds * 1000).toISOString().substr(11, 8)
+      }`,
+      reply_to: email,
+      send_to: email,
+    };
+    send(
+      process.env.EMAIL_SERVICE_KEY,
+      process.env.EMAIL_TEMPLATE_ID,
+      toSend,
+      process.env.EMAIL_USER_ID
+    )
+      .then((response) => {
+        console.log("SUCCESS!", response.status, response.text);
+      })
+      .catch((err) => {
+        console.log("FAILED...", err);
+      });
+  };
   function answer(value) {
     setSelect(value);
     setAns(questions[index].correct_answer);
+    questions[index].correct_answer == value && setScore(score + 1);
+    console.log(score);
     setTimeout(() => {
       if (index < questions.length - 1) {
+        setSelect(0);
         setIndex(index + 1);
         setAns("");
-        setSelect(0);
       } else {
         setDone(true);
-        let toSend = {
-          from_name: "QA Team",
-          to_name: "Dear",
-          message: `your score in Exam is ${
-            score +
-            " / " +
-            questions.length +
-            ". time you take is " +
-            new Date(seconds * 1000).toISOString().substr(11, 8)
-          }`,
-          reply_to: email,
-          send_to: email,
-        };
-        send(
-          process.env.EMAIL_SERVICE_KEY,
-          process.env.EMAIL_TEMPLATE_ID,
-          toSend,
-          process.env.EMAIL_USER_ID
-        )
-          .then((response) => {
-            console.log("SUCCESS!", response.status, response.text);
-          })
-          .catch((err) => {
-            console.log("FAILED...", err);
-          });
       }
     }, 1000);
   }
@@ -124,7 +128,7 @@ export default function Home() {
                     Your Score is {`${score}/${questions.length}`}
                   </span>
                   <br />
-                  {`time you take : ${new Date(seconds * 1000)
+                  {`time you take : ${new Date((seconds - 1) * 1000)
                     .toISOString()
                     .substr(11, 8)}`}
                   <br />
@@ -137,7 +141,9 @@ export default function Home() {
             <div className="next">
               <button
                 onClick={() =>
-                  index < questions.length - 1 ? setIndex(index + 1) : answer(0)
+                  index < questions.length - 1
+                    ? setIndex(index + 1)
+                    : setDone(true)
                 }
               >
                 {index < questions.length - 1 ? "Next >" : "Finish"}
